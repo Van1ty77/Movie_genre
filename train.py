@@ -4,6 +4,7 @@ import json
 import pickle
 import re
 import matplotlib.pyplot as plt
+import joblib
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.preprocessing import LabelEncoder
 from sklearn.linear_model import LogisticRegression
@@ -31,6 +32,7 @@ df = df[df['main_genre'] != '']
 top_genres = df['main_genre'].value_counts().head(9).index
 df = df[df['main_genre'].isin(top_genres)]
 print(f"Выбрано жанров: {len(top_genres)}")
+print(df['main_genre'].value_counts())
 
 print("\nПреобразование текста в числа (TF-IDF)...")
 
@@ -95,6 +97,9 @@ class ComplexModel:
     def predict(self, X):
         return self.pipeline.predict(X)
 
+    def predict_proba(self, X):
+        return self.pipeline.predict_proba(X)
+
 
 class SimpleKeywordClassifier:
     def __init__(self):
@@ -133,9 +138,6 @@ class SimpleKeywordClassifier:
             best_genre = max(scores, key=scores.get)
             predictions.append(best_genre)
         return self.label_encoder.transform(predictions)
-
-
-print("\nЗапуск кросс-валидации для обеих моделей...")
 
 cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
@@ -198,8 +200,6 @@ for name, model in models.items():
         'predictions': y_pred_val
     }
 
-print("\nВизуализация ошибок...")
-
 best_name = max(cv_results, key=lambda x: cv_results[x]['test_acc'])
 best_result = cv_results[best_name]
 print(f"\nЛучшая модель по тестовой точности: {best_name}")
@@ -230,7 +230,6 @@ print("\nТоп-10 самых частых ошибок (истинный → п
 for (true, pred), count in error_counts.most_common(10):
     print(f"{true:15} → {pred:15}: {count:4} раз")
 
-print("\nВыбор лучшей модели...")
 for name, res in cv_results.items():
     print(f"{name}: CV={res['cv_mean']:.4f}±{res['cv_std']:.4f}, Test={res['test_acc']:.4f}")
 
@@ -248,15 +247,17 @@ print(f"Точность на сейфе: {final_accuracy:.4f}")
 print(f"F1-score (macro): {final_f1_macro:.4f}")
 print(f"F1-score (weighted): {final_f1_weighted:.4f}")
 
-print("\nСохранение модели и параметров...")
-
 with open('best_genre_model.pkl', 'wb') as f:
     pickle.dump(final_model, f)
-print("Модель сохранена в 'best_genre_model.pkl'")
+print("\nМодель сохранена в 'best_genre_model.pkl'")
 
 with open('genre_encoder.pkl', 'wb') as f:
     pickle.dump(y_encoder, f)
 print("Кодировщик жанров сохранён в 'genre_encoder.pkl'")
+
+if final_model_name == 'LogisticRegression' and hasattr(final_model, 'pipeline'):
+    joblib.dump(final_model.pipeline, 'genre_pipeline.joblib')
+    print("Pipeline сохранён в 'genre_pipeline.joblib'")
 
 model_params = {
     'model_name': final_model_name,
@@ -295,6 +296,7 @@ if error_counts:
     print(f"Чаще всего модель путает: '{true_class}' и '{pred_class}' ({most_common[1]} ошибок)")
 
 print(f"\nСохранённые файлы:")
-print("1. best_genre_model.pkl - обученная модель")
-print("2. genre_encoder.pkl - кодировщик жанров")
-print("3. model_parameters.json - параметры и метрики модели")
+print("1. best_genre_model.pkl - обученная модель (pickle)")
+print("2. genre_pipeline.joblib - pipeline модели (joblib)")
+print("3. genre_encoder.pkl - кодировщик жанров")
+print("4. model_parameters.json - параметры и метрики модели")

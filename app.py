@@ -1,26 +1,17 @@
 import gradio as gr
 import pickle
 import re
-
-
-class ComplexModel:
-    def __init__(self):
-        self.pipeline = None
-
-    def fit(self, X, y):
-        return self
-
-    def predict(self, X):
-        return self.pipeline.predict(X)
-
-    def predict_proba(self, X):
-        return self.pipeline.predict_proba(X)
-
+import joblib
 
 print("Loading model...")
 
-with open('best_genre_model.pkl', 'rb') as f:
-    model = pickle.load(f)
+try:
+    model = joblib.load('genre_pipeline.joblib')
+    print("Model loaded from joblib")
+except:
+    with open('best_genre_model.pkl', 'rb') as f:
+        model = pickle.load(f)
+    print("Model loaded from pickle")
 
 with open('genre_encoder.pkl', 'rb') as f:
     genre_encoder = pickle.load(f)
